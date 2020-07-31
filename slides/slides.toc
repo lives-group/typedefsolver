@@ -1,0 +1,7 @@
+\beamer@endinputifotherversion {3.26pt}
+\select@language {brazil}
+\beamer@sectionintoc {1}{Vis\IeC {\~a}o geral do algoritmo}{3}{0}{1}
+\beamer@sectionintoc {2}{Sintaxe da linguagem n\IeC {\'u}cleo}{4}{0}{2}
+\beamer@sectionintoc {3}{Sintaxe de restri\IeC {\c c}\IeC {\~o}es}{9}{0}{3}
+\beamer@sectionintoc {4}{Gera\IeC {\c c}\IeC {\~a}o de restri\IeC {\c c}\IeC {\~o}es}{10}{0}{4}
+\beamer@sectionintoc {5}{Solucionar restri\IeC {\c c}\IeC {\~o}es }{14}{0}{5}

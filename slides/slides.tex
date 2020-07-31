@@ -1,0 +1,246 @@
+\documentclass{beamer}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{amsmath,amsfonts,amssymb,amsthm}
+\usepackage{proof}
+\usepackage{color}
+ 
+\usetheme{Luebeck}
+
+\newcommand{\constr}[1]{\ensuremath{\langle\langle\,#1\,\rangle\rangle}}
+ 
+\title{Inferência de typedef's para C}
+\author[Rodrigo Ribeiro]{Rodrigo Ribeiro}
+\date{\today}
+
+\begin{document}
+   \begin{frame}
+        \titlepage
+   \end{frame}
+   \begin{frame}{Sumário}
+        \tableofcontents
+   \end{frame}
+   \section{Visão geral do algoritmo}
+   \begin{frame}{Visão Geral do Algoritmo}
+        \begin{itemize}
+            \item Algoritmo baseado em inferência de tipos para ML
+            \item Dividido em duas etapas
+              \begin{itemize}
+                  \item Gerar restrições
+                  \item Solucionar restrições
+             \end{itemize}
+           \item Solução das restrições produz, como efeito colateral, definições de
+             typedefs.
+        \end{itemize}
+    \end{frame}
+   \section{Sintaxe da linguagem núcleo}
+   \begin{frame}{Metavariáveis}
+     \begin{table}
+     \begin{tabular}{|l|l|}
+       \hline
+       Símbolo & Significado \\ \hline
+		$l$ & {literal} \\
+		$x$ & {variável}\\
+		$f$  & função \\
+		$\tau$ & {tipo}\\
+		$\circ$ & {operador binário qualquer}\\
+                $\rho : l \to \tau$ & {função para atribuir tipos a literais}\\
+		\hline
+		\end{tabular}
+           \centering
+       \end{table}
+   \end{frame}
+   \begin{frame}{Expressões}
+\[
+\begin{array}{lcll}
+	e & ::= & l & \{\text{literal}\} \\
+	& \mid & x & \{\text{variável}\} \\
+	& \mid & e . x & \{\text{acesso a campo}\}\\
+	& \mid & e\,[e_1] & \{\text{accesso arranjo}\} \\
+	& \mid & (\tau)\,e & \{\text{casting}\} \\
+	&\mid & e\circ e' & \{\text{bin op}\} \\
+	& \mid & \&\,e & \{\text{address}\} \\
+	& \mid & \star\,e & \{\text{deref. ponteiro}\}\\
+	& \mid & e \to x & \{\text{ref. campo ponteiro}\}\\
+	& \mid & f(e_i)^{i=0..n} & \{\text{chamada função}\}\\
+\end{array} \]
+   \end{frame}
+   \begin{frame}{Comandos}
+     \[
+\begin{array}{lcll}
+	s & ::=   & \tau\:x\:=\:e & \{\text{var. def.}\} \\
+	& \mid & x\:=\:e & \{\text{atrib. var.}\} \\
+	& \mid & \star\,x\:=\:e & \{\text{atrib. pont.}\} \\
+	& \mid & x[e]\:=\:e &\{\text{atrib. arranjo}\} \\
+\end{array} \]
+   \end{frame}
+   \begin{frame}{Declarações}
+     \begin{itemize}
+         \item typedefs são apenas um par formado por um tipo e um nome.
+         \item Sintaxe de funções
+         \begin{itemize}
+             \item Formada por: tipo de retorno, nome, parâmetros, comandos
+             \item Último comando deve ser um retorno (restrição para facilitar
+               geração de restrições).
+         \end{itemize}
+     \end{itemize}
+   \end{frame}
+   \begin{frame}{Tipos}
+     \[
+\begin{array}{lcll}
+	\tau & ::= & \textbf{B} & \{\text{tipos básicos: void, int,
+	etc.}\}\\
+	& \mid & \star\, \tau & \{\text{ponteiros}\} \\
+	& \mid & \{x_i : \tau_i\}^{i=1..n} & \{\text{registros}\} \\
+	& \mid & \tau[n] & \{\text{arranjo}\}\\
+        & \mid & \tau^{0..n} \to\tau & \{\text{tipos de funções}\}\\
+\end{array}
+     \]
+   \end{frame}
+   \section{Sintaxe de restrições}
+   \begin{frame}{Sintaxe de restrições}
+       \begin{itemize}
+           \item Existência de declaração: $def\:x\,:\,\tau$.
+           \item Igualdade de tipos: $\tau \equiv \tau'$.
+	   \item Existencia de campos: $has(\tau,x:\tau')$.
+	   \item Arranjos: $\tau \equiv\tau'[]$.
+	   \item Pointeiros: $\tau \equiv \star\tau'$.
+       \end{itemize}
+   \end{frame}
+   \section{Geração de restrições}
+   \begin{frame}{Geração de restrições para expressões}
+       \[\small{
+            \begin{array}{lcl}
+                \constr{l : \tau} & = & \rho(l) \equiv \tau\\
+                \constr{x : \tau} & = & x \equiv \tau \\
+                \constr{\circ : \tau} & = & \circ \equiv \tau \\
+                \constr{f : \tau^{0..n}\to \tau'} & = & f \equiv
+                                                        \tau^{0..n}\to
+                                                        \tau' \\
+                \constr{e.x : \tau} & = & \exists
+                                          \alpha_1\,\alpha_2. \constr{e
+                                          : \alpha_1} \land \constr{x
+                                          : \alpha_2} \land \\
+                          & & has(\alpha_1,x:\alpha_2) \land \tau
+                              \equiv \alpha_2\\
+                \constr{e[e_1] : \tau} & = & \exists
+                                         \alpha_1\alpha_2\alpha_3. \constr{e:\alpha_1}
+                                             \land\constr{e_1:\alpha_2}\land\\
+                         & & \alpha_1\equiv\alpha_3[]\land \tau \equiv
+                             \alpha_3\\
+                \constr{(\tau')\,e:\tau} & = & \constr{e : \tau} \land
+                                               \tau \equiv \tau'\\
+                \constr{f(e^{i=0..n}) : \tau} & = & \exists
+                                                    \alpha^{i=0..n}. \bigwedge_{i=0..n}\constr{e_i:\alpha_i}
+                                                    \land \constr{f :
+                                                    \alpha^{i=0..n}
+                                                    \to \tau} 
+            \end{array}}
+       \]
+   \end{frame}
+   \begin{frame}{Geração de restrições para expressões}
+       \[
+            \small{
+                 \begin{array}{lcl}
+                     \constr{e \circ e' : \tau} & = & \exists
+                                                      \alpha_1\alpha_2.\constr{e
+                                                      :\alpha_1} \land
+                                                      \constr{e' :
+                                                      \alpha_2} \land
+                                                      \constr{\circ :
+                                                      \alpha_1\to\alpha_2\to\tau}\\
+                     \constr{\&\,e : \tau} & = & \exists \alpha
+                                                 \alpha'. \constr{e :
+                                                 \alpha} \land
+                                                 \alpha \equiv \star \alpha'
+                                                 \land \tau = int\\
+                     \constr{\star\,e : \tau} & = & \exists
+                                                    \alpha. \constr{e
+                                                    : \alpha} \land
+                                                    \alpha = \star \tau\\
+                     \constr{e\to x : \tau} & = & \exists
+                                                  \alpha_1\alpha_2\alpha_3. \constr{e
+                                                  :\alpha_1} \land
+                                                  \constr{x :
+                                                  \alpha_3} \land
+                                                  \alpha_1 = \star\alpha_2
+                                                  \land\\
+                          & & has(\alpha,x : \alpha_3) \land \tau
+                              \equiv \alpha_3\\
+                 \end{array}}
+       \]
+   \end{frame}
+   \begin{frame}{Geração de restrições para comandos}
+       \[
+          \small{
+           \begin{array}{lcl}
+               \constr{\emptyset} & = & true \\
+               \constr{\tau\:x := e; S} & = & \exists \alpha. \constr{e : \alpha} \land
+                                              def\:\tau\: in\:
+                                              def\,x:\tau\,in\,\constr{S}
+             \land \tau \equiv \alpha\\
+               \constr{x := e ; S} & = & \exists \alpha. \constr{x : \alpha}\land\constr{e : \alpha} \land
+                                                      \constr{S}\\ 
+               \constr{\star\,x := e ; S} & = & \exists \alpha \alpha'. \constr{x : \alpha'}\land\constr{e : \alpha} \land
+                                                      \alpha' \equiv
+                                                \star \alpha)\land\constr{S}\\ 
+               \constr{x[e'] := e ; S} & = &
+                                             \exists\alpha_1\alpha_2\alpha_3.\constr{e'
+                                             : \alpha_1}\land \alpha_1
+                                             = int \land \constr{e :
+                                             \alpha_2} \land \\ 
+                       & & \constr{x : \alpha_3} \land
+                           \alpha_3 \equiv \alpha_2[] \\
+           \end{array}}
+       \]
+   \end{frame}
+   \begin{frame}{Geração de restrições para funções e definições}
+       \[
+           \small{
+                \begin{array}{lcl}
+              \constr{\tau\:f(\tau_i\:x_i)^{i=0..n}\:\:S\:\:e} & = &
+                                                                     \exists
+                                                                     \alpha. def\:f:\tau^{i=0..n}\to\tau\:\:in\:\:def\:\:x_i:\tau_i^{i=0..n}\:in\\
+                      & &\constr{S}\land\constr{e : \alpha} \land
+                          \alpha \equiv \tau\\
+              \constr{typedef\:\:\tau\: x} & = & def\:x\,=\,\tau\\
+                \end{array}
+           }
+       \]
+   \end{frame}
+   \section{Solucionar restrições }
+   \begin{frame}{Solucionando restrições --- Visão geral}
+       \begin{itemize}
+           \item Restrições são basicamente restrições de igualdade e,
+             portanto, podem ser resolvidas por unificação.
+             \begin{itemize}
+                  \item Quantificadores existenciais correspondem a
+                    variáveis ``fresh'', i.e., novas variáveis.
+                  \item Restrições de definição substituem o nome de
+                    um identificador pelo tipo associado a este.
+                  \item Restrições de igualdade: resolvidas por unificação.
+             \end{itemize}
+       \end{itemize}
+   \end{frame}
+   \begin{frame}{Solucionando restrições --- Visão geral}
+      \begin{itemize}
+           \item Restrições de campos
+           \begin{itemize}
+                \item Consideradas após a solução de todas as
+                  restrições de igualdade.
+                \item Substituições geradas por unificação devem ser
+                  aplicadas a restrições ainda não processadas.
+           \end{itemize}       
+      \end{itemize}
+   \end{frame}
+   \begin{frame}{Solucionando restrições --- Unificação}
+   \end{frame}
+   \begin{frame}{Limitações conhecidas}
+     \begin{itemize}
+          \item Dimensão de arranjos não são tratadas.
+          \item Ponteiros para funções.
+          \item Algo que ainda não percebi? :)
+     \end{itemize}
+   \end{frame}
+\end{document}

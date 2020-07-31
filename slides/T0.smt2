@@ -1,0 +1,8 @@
+(declare-datatypes () ((T int float)))
+(declare-const a T)
+(declare-const a1 T)
+(declare-const a2 T)
+(declare-fun plus (T T) T)
+(assert (and (and (= a1 int) (= a2 int)) (= (plus a1 a2) a)))
+(check-sat)
+(get-model)
